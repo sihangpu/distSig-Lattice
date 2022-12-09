@@ -13,15 +13,16 @@ using random_bytes_engine = std::independent_bits_engine<
     std::default_random_engine, CHAR_BIT, unsigned char>;
 random_bytes_engine rbe;
 
-Vec<std::bitset<TEMP_BITS>> sig_z_bin;
-int TESTIMES = 100;
+int TESTIMES = 10;
 
 static int run()
 {
     double init_st, init_ed, keypair_ed,
         sign1_ed, sign2_ed, sign3_ed, verify_ed;
     double init_t = 0.0, keypair_t = 0.0, sign_t = 0.0, verify_t = 0.0;
-    int bits, pathbytesNum;
+    int bits = 0, pathbytesNum = 0;
+    Vec<std::bitset<TEMP_BITS>> sig_z_bin;
+
     for (auto testid = 0; testid < TESTIMES; ++testid)
     {
         ZZ_pXModulus modp;
@@ -34,7 +35,7 @@ static int run()
         std::shared_ptr<merkle::Path> sig_path_ptr;
         vec_ZZ_pX z_rec;
         ZZ_pX res;
-        sig_z_bin.kill();
+        // sig_z_bin.kill();
 
         int rejSampIds[N_USERS];
         pk_list.SetLength(N_USERS);

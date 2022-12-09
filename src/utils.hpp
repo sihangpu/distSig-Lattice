@@ -4,6 +4,7 @@
 #include <string>
 #include <assert.h>
 #include <NTL/RR.h>
+#include <bitset>
 
 #include "fips202.h"
 #include "sample.hpp"
@@ -51,7 +52,7 @@ inline void conv2Signed(NTL::ZZ &dest, const NTL::ZZ_p &src)
 
 inline void conv2Signed(NTL::ZZX &dest, const NTL::ZZ_pX &src)
 {
-    assert((DEG - 1) == NTL::deg(src));
+    assert((DEG - 1) >= NTL::deg(src));
 
     dest.SetLength(DEG);
     NTL::ZZ mod = NTL::ZZ_p::modulus();
@@ -80,7 +81,7 @@ inline void conv2Signed(NTL::vec_ZZ &dest, const NTL::vec_ZZ_pX &src)
     dest.SetLength(src.length() * DEG);
     for (auto i = 0; i < src.length(); ++i)
     {
-        assert((DEG - 1) == NTL::deg(src[i]));
+        assert((DEG - 1) >= NTL::deg(src[i]));
         for (auto j = 0; j < DEG; ++j)
         {
             conv2Signed(dest[i * DEG + j], src[i][j]);
@@ -105,7 +106,7 @@ inline void vecInnerProd(NTL::ZZ_pX &dest, const NTL::ZZ_pXModulus &modp,
 
 inline void poly_pack(uint8_t packed[], const NTL::ZZ_pX &poly)
 {
-    assert((DEG - 1) == NTL::deg(poly));
+    assert((DEG - 1) >= NTL::deg(poly));
 
     NTL::ZZ tmp;
     for (auto i = 0; i < DEG; ++i)
@@ -285,7 +286,7 @@ inline int rejSamp(const NTL::vec_ZZ_pX &y,
 
 inline int encode(std::bitset<TEMP_BITS> &code, const NTL::ZZ_pX &z)
 {
-    assert((DEG - 1) == NTL::deg(z));
+    assert((DEG - 1) >= NTL::deg(z));
     NTL::ZZ signed_z, z1;
     long delt = 1L << DELTA;
     int idx = 0;

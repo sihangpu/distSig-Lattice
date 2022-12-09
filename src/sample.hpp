@@ -129,7 +129,9 @@ inline void sampleGaussian(NTL::ZZ_pX &poly, long n, NTL::xdouble stdev)
     NTL::conv(tempInt, dvec[i] + 0.5); // round to nearest integer
     NTL::conv(poly[i], tempInt);
   }
+  // std::cout << "B: " << NTL::deg(poly) << ", ";
   poly.normalize();
+  // std::cout << NTL::deg(poly) << ", ";
 }
 
 #endif
