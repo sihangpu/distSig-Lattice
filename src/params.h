@@ -18,8 +18,8 @@
 
 #define SIGMA_SK 4 // Discrete gaussian stdev for sk
 #define DEG 256    // Poynomial degree + 1
-#define ROWS 6     // Rows of matrix A
-#define COLS 4     // Columns
+#define ROWS 8     // Rows of matrix A
+#define COLS 7     // Columns
 #define M_REJ 1.0  // Rejection Sampling constant factor -- M
 #define TAU 23     // L1 bound of the Challenge
 

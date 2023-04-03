@@ -28,10 +28,12 @@ static int run()
         ZZ_pXModulus modp;
         Vec<vec_ZZ_pX> matA;
         Vec<vec_ZZ_pX> pk_list, sk_list, y_list, v_list, z_list;
-        NTL::vec_ZZ_pX sig_z;
+        NTL::vec_ZZ_pX sig_z, cPK[N_USERS];
+        uint8_t g_list[N_USERS * SEEDBYTES], h_list[N_USERS * SEEDBYTES];
 
         merkle::Tree merkleTrees[N_USERS];
         merkle::Hash sig_root;
+        ZZ_pX sig_c[N_USERS];
         std::shared_ptr<merkle::Path> sig_path_ptr;
         vec_ZZ_pX z_rec;
         ZZ_pX res;
@@ -52,17 +54,19 @@ static int run()
         init_ed = GetTime();
 
         for (auto i = 0; i < N_USERS; ++i)
-            key_pair(pk_list[i], sk_list[i], matA, modp);
+            key_pair1(pk_list[i], sk_list[i], g_list + i * SEEDBYTES, i, matA, modp);
+        for (auto i = 0; i < N_USERS; ++i)
+            key_pair2(cPK[i], g_list, pk_list, matA, modp);
         keypair_ed = GetTime();
 
         for (auto i = 0; i < N_USERS; ++i)
-            sign_1st(y_list[i], v_list[i], matA, modp);
+            sign_1st(y_list[i], v_list[i], h_list + i * SEEDBYTES, matA, pk_list[i], modp);
         sign1_ed = GetTime();
 
         int restart = 0x00;
         for (auto i = 0; i < N_USERS; ++i)
-            restart |= sign_2nd(z_list[i], rejSampIds[i], merkleTrees[i], i, matA, modp,
-                                pk_list, sk_list[i], y_list[i], v_list, msg, sizeof(msg));
+            restart |= sign_2nd(z_list[i], sig_c[i], rejSampIds[i], merkleTrees[i], i, matA, modp,
+                                h_list, cPK[i], pk_list, sk_list[i], y_list[i], v_list, msg, sizeof(msg));
         sign2_ed = GetTime();
 
 #ifdef DEBUG_MULSIG_MERKLE_TREE
@@ -73,11 +77,11 @@ static int run()
 #endif
         if (restart == 0x00)
         {
-            sign_3rd(sig_root, sig_path_ptr, sig_z, 0,
+            sign_3rd(sig_path_ptr, sig_z, 0,
                      matA, modp, pk_list, z_list, v_list, merkleTrees,
-                     msg, sizeof(msg), rejSampIds);
+                     msg, sizeof(msg), rejSampIds, sig_c[0]);
             sign3_ed = GetTime();
-            if (verify(matA, modp, pk_list, msg, sizeof(msg), sig_root, *sig_path_ptr, sig_z))
+            if (verify(matA, modp, cPK[0], msg, sizeof(msg), sig_c[0], *sig_path_ptr, sig_z))
 #ifdef DEBUG_MULSIG
                 printf(">>> Verified <<<\n");
 #else

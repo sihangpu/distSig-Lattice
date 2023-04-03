@@ -1,7 +1,9 @@
 #ifndef MULSIG_H
 #define MULSIG_H
-
+#include <iostream>
 #include <random>
+#include <cstdint>
+#include <cstring>
 #include <chrono>
 #include "merklecpp.h"
 #include "utils.hpp"
@@ -29,11 +31,12 @@ inline void init(NTL::ZZ_pXModulus &modp, NTL::Vec<NTL::vec_ZZ_pX> &matA)
     }
 }
 
-inline void key_pair(NTL::vec_ZZ_pX &pk, NTL::vec_ZZ_pX &sk,
-                     const NTL::Vec<NTL::vec_ZZ_pX> &A,
-                     const NTL::ZZ_pXModulus &modp)
+inline void key_pair1(NTL::vec_ZZ_pX &pk, NTL::vec_ZZ_pX &sk,
+                      uint8_t g_index[], uint8_t index,
+                      const NTL::Vec<NTL::vec_ZZ_pX> &A,
+                      const NTL::ZZ_pXModulus &modp)
 {
-    NTL::xdouble sigma_sk(double(SIGMA_SK));
+    int sigma_sk(SIGMA_SK);
     NTL::ZZ_pX temp;
 
     sk.SetLength(SUM_OF_DIMS);
@@ -41,12 +44,12 @@ inline void key_pair(NTL::vec_ZZ_pX &pk, NTL::vec_ZZ_pX &sk,
 
     for (auto i = 0; i < COLS; ++i)
     {
-        sampleGaussian(sk[i], DEG, sigma_sk);
+        sampleUniform(sk[i], DEG, sigma_sk);
     }
 
     for (auto i = 0; i < ROWS; ++i)
     {
-        sampleGaussian(sk[i + COLS], DEG, sigma_sk);
+        sampleUniform(sk[i + COLS], DEG, sigma_sk);
         pk[i] = sk[i + COLS];
         for (auto j = 0; j < COLS; ++j)
         {
@@ -55,17 +58,40 @@ inline void key_pair(NTL::vec_ZZ_pX &pk, NTL::vec_ZZ_pX &sk,
         }
     }
 
-#ifdef DEBUG_MULSIG_KEYGEN
-    std::cout << "PK:\n"
-              << pk << std::endl
-              << "SK:\n"
-              << sk << std::endl;
+    uint8_t binary_pk[ROWS * POLYBYTES + 1];
+    polyvec_pack(binary_pk, pk);
+    binary_pk[ROWS * POLYBYTES] = index;
+    shake256(g_index, SEEDBYTES, binary_pk, sizeof(binary_pk));
+}
 
-#endif
+inline void key_pair2(NTL::vec_ZZ_pX &cPK,
+                      const uint8_t g_list[],
+                      const NTL::Vec<NTL::vec_ZZ_pX> &pk_list,
+                      const NTL::Vec<NTL::vec_ZZ_pX> &A,
+                      const NTL::ZZ_pXModulus &modp)
+{
+    cPK.SetLength(ROWS);
+    uint8_t binary_pk[ROWS * POLYBYTES + 1];
+    uint8_t temp_g[SEEDBYTES];
+
+    for (auto i = 0; i < N_USERS; ++i)
+    {
+        polyvec_pack(binary_pk, pk_list[i]);
+        binary_pk[ROWS * POLYBYTES] = i;
+        shake256(temp_g, SEEDBYTES, binary_pk, sizeof(binary_pk));
+        if (0 != memcmp(temp_g, g_list + i * SEEDBYTES, SEEDBYTES))
+            printf("<<< KeyGen Failed - %d >>>\n", i);
+        for (auto j = 0; j < ROWS; ++j)
+        {
+            cPK[j] += pk_list[i][j];
+        }
+    }
 }
 
 inline void sign_1st(NTL::vec_ZZ_pX &y, NTL::vec_ZZ_pX &v,
+                     uint8_t h_index[],
                      const NTL::Vec<NTL::vec_ZZ_pX> &A,
+                     const NTL::vec_ZZ_pX &pk,
                      const NTL::ZZ_pXModulus &modp)
 {
     int step_y, step_v;
@@ -93,6 +119,12 @@ inline void sign_1st(NTL::vec_ZZ_pX &y, NTL::vec_ZZ_pX &v,
             }
         }
     }
+
+    uint8_t binary_pk_v[(ROWS + L_MULT_ROWS) * POLYBYTES];
+    polyvec_pack(binary_pk_v, v);
+    polyvec_pack(binary_pk_v + L_MULT_ROWS * POLYBYTES, pk);
+    shake256(h_index, SEEDBYTES, binary_pk_v, sizeof(binary_pk_v));
+
 #ifdef DEBUG_MULSIG_SIGN_1
     std::cout << "y:\n"
               << y << std::endl
@@ -101,8 +133,9 @@ inline void sign_1st(NTL::vec_ZZ_pX &y, NTL::vec_ZZ_pX &v,
 #endif
 }
 
-inline int sign_2nd(NTL::vec_ZZ_pX &z, int &rejSamp_id, merkle::Tree &mt, int user_id,
+inline int sign_2nd(NTL::vec_ZZ_pX &z, NTL::ZZ_pX &c, int &rejSamp_id, merkle::Tree &mt, int user_id,
                     const NTL::Vec<NTL::vec_ZZ_pX> &A, const NTL::ZZ_pXModulus &modp,
+                    const uint8_t h_list[], const NTL::vec_ZZ_pX &cPK,
                     const NTL::Vec<NTL::vec_ZZ_pX> &pk_list, const NTL::vec_ZZ_pX &sk,
                     const NTL::vec_ZZ_pX &y, const NTL::Vec<NTL::vec_ZZ_pX> &v_list,
                     const uint8_t msg[], size_t mlen)
@@ -113,6 +146,18 @@ inline int sign_2nd(NTL::vec_ZZ_pX &z, int &rejSamp_id, merkle::Tree &mt, int us
     NTL::vec_ZZ_pX w;
     w.SetLength(total_leaves * ROWS);
     z.SetLength(SUM_OF_DIMS);
+
+    uint8_t binary_pk_v[(ROWS + L_MULT_ROWS) * POLYBYTES];
+    uint8_t temp_h[SEEDBYTES];
+
+    for (auto i = 0; i < N_USERS; ++i)
+    {
+        polyvec_pack(binary_pk_v, v_list[i]);
+        polyvec_pack(binary_pk_v + L_MULT_ROWS * POLYBYTES, pk_list[i]);
+        shake256(temp_h, SEEDBYTES, binary_pk_v, sizeof(binary_pk_v));
+        if (0 != memcmp(temp_h, h_list + i * SEEDBYTES, SEEDBYTES))
+            printf("<<< Sign_2nd Failed >>>\n");
+    }
 
     int idx;
     // Get w from all users' v
@@ -131,6 +176,7 @@ inline int sign_2nd(NTL::vec_ZZ_pX &z, int &rejSamp_id, merkle::Tree &mt, int us
             }
         }
     }
+
     // Build the merkle tree
     std::vector<merkle::Hash> hashes(total_leaves);
     uint8_t binary_w[ROWS * POLYBYTES];
@@ -141,6 +187,7 @@ inline int sign_2nd(NTL::vec_ZZ_pX &z, int &rejSamp_id, merkle::Tree &mt, int us
         shake256(hash, SEEDBYTES, binary_w, sizeof(binary_w));
         hashes[i] = hash;
     }
+
     for (auto h : hashes)
         mt.insert(h);
 
@@ -148,14 +195,14 @@ inline int sign_2nd(NTL::vec_ZZ_pX &z, int &rejSamp_id, merkle::Tree &mt, int us
 
     // Get the challenge
     uint8_t seed_for_c[SEEDBYTES];
-    uint8_t binary_pk_rt_m[POLYBYTES * (N_USERS + 1) * ROWS + SEEDBYTES + mlen];
-    NTL::ZZ_pX c;
-    polyvec_pack(binary_pk_rt_m, pk_list[user_id]);
-    polyvec_pack(binary_pk_rt_m + POLYBYTES * ROWS, pk_list);
-    memcpy(binary_pk_rt_m + POLYBYTES * (N_USERS + 1) * ROWS, root.bytes, SEEDBYTES);
-    memcpy(binary_pk_rt_m + POLYBYTES * (N_USERS + 1) * ROWS + SEEDBYTES, msg, mlen);
+    uint8_t binary_pk_rt_m[POLYBYTES * ROWS + SEEDBYTES + mlen];
+
+    polyvec_pack(binary_pk_rt_m, cPK);
+    memcpy(binary_pk_rt_m + POLYBYTES * ROWS, root.bytes, SEEDBYTES);
+    memcpy(binary_pk_rt_m + POLYBYTES * ROWS + SEEDBYTES, msg, mlen);
     shake256(seed_for_c, SEEDBYTES, binary_pk_rt_m, sizeof(binary_pk_rt_m));
     poly_challenge(c, seed_for_c);
+
 #ifdef DEBUG_MULSIG_PACK
     std::cout << pk_list[user_id] << std::endl;
     for (auto byte : binary_pk_rt_m)
@@ -190,28 +237,11 @@ inline int sign_2nd(NTL::vec_ZZ_pX &z, int &rejSamp_id, merkle::Tree &mt, int us
 
 inline bool verify_id(int user_id, int &rejSamp_id,
                       const NTL::Vec<NTL::vec_ZZ_pX> &A, const NTL::ZZ_pXModulus &modp,
-                      const NTL::Vec<NTL::vec_ZZ_pX> &pk_list, const NTL::vec_ZZ_pX &v,
-                      const NTL::vec_ZZ_pX &z, const merkle::Hash &root,
-                      const uint8_t msg[], size_t mlen)
+                      const NTL::vec_ZZ_pX &pk, const NTL::vec_ZZ_pX &v,
+                      const NTL::vec_ZZ_pX &z, const NTL::ZZ_pX &c)
 {
-    // @TODO: check ||z|| > B_z
-    // then do the following
-    // hash and get the challenge
-    uint8_t seed_for_c[SEEDBYTES];
-    uint8_t binary_pk_rt_m[POLYBYTES * (N_USERS + 1) * ROWS + SEEDBYTES + mlen];
-    NTL::ZZ_pX c;
-    polyvec_pack(binary_pk_rt_m, pk_list[user_id]);
-    polyvec_pack(binary_pk_rt_m + POLYBYTES * ROWS, pk_list);
-    memcpy(binary_pk_rt_m + POLYBYTES * (N_USERS + 1) * ROWS, root.bytes, SEEDBYTES);
-    memcpy(binary_pk_rt_m + POLYBYTES * (N_USERS + 1) * ROWS + SEEDBYTES, msg, mlen);
-    shake256(seed_for_c, SEEDBYTES, binary_pk_rt_m, sizeof(binary_pk_rt_m));
-    poly_challenge(c, seed_for_c);
-#ifdef DEBUG_MULSIG_PACK
-    std::cout << pk_list[user_id] << std::endl;
-    for (auto byte : binary_pk_rt_m)
-        printf("%d, ", byte);
-    std::cout << c << std::endl;
-#endif
+    // @TODO: Check |Z| > Bz
+
     NTL::vec_ZZ_pX w;
     NTL::ZZ_pX temp;
     uint8_t equal = 0x01;
@@ -219,7 +249,7 @@ inline bool verify_id(int user_id, int &rejSamp_id,
 
     for (auto i = 0; i < ROWS; ++i)
     {
-        NTL::MulMod(temp, pk_list[user_id][i], c, modp);
+        NTL::MulMod(temp, pk[i], c, modp);
         w[i] = z[i + COLS] - temp;
         for (auto j = 0; j < COLS; ++j)
         {
@@ -244,21 +274,21 @@ inline bool verify_id(int user_id, int &rejSamp_id,
     return false;
 }
 
-inline void sign_3rd(merkle::Hash &sig_root, std::shared_ptr<merkle::Path> &sig_path_ptr,
+inline void sign_3rd(std::shared_ptr<merkle::Path> &sig_path_ptr,
                      NTL::vec_ZZ_pX &sig_z, int user_id, const NTL::Vec<NTL::vec_ZZ_pX> &A,
                      const NTL::ZZ_pXModulus &modp, const NTL::Vec<NTL::vec_ZZ_pX> &pk_list,
                      const NTL::Vec<NTL::vec_ZZ_pX> &z_list, const NTL::Vec<NTL::vec_ZZ_pX> &v_list,
-                     merkle::Tree mt_inputs[], const uint8_t msg[], size_t mlen, const int rejSampIds[])
+                     merkle::Tree mt_inputs[], const uint8_t msg[], size_t mlen, const int rejSampIds[],
+                     const NTL::ZZ_pX &sig_c)
 {
     sig_z.SetLength(SUM_OF_DIMS);
     // Verify others' z
     int indices[N_USERS] = {-1};
     for (int i = 0; i < N_USERS; ++i)
     {
-        if (i == user_id)
-            continue;
-        if (!verify_id(i, indices[i], A, modp, pk_list, v_list[i], z_list[i],
-                       mt_inputs[i].root(), msg, mlen))
+        // if (i == user_id)
+        // continue;
+        if (!verify_id(i, indices[i], A, modp, pk_list[i], v_list[i], z_list[i], sig_c))
         {
             throw std::runtime_error("ERR:sign_3rd: Verify other's z failed!");
         }
@@ -277,47 +307,29 @@ inline void sign_3rd(merkle::Hash &sig_root, std::shared_ptr<merkle::Path> &sig_
     }
 
     int path_idx = IntIndex(rejSampIds);
-    sig_root = mt_inputs[user_id].root();
     mt_inputs[user_id].flush_to(path_idx);
     sig_path_ptr = mt_inputs[user_id].path(path_idx);
 }
 
 inline bool verify(const NTL::Vec<NTL::vec_ZZ_pX> &A, const NTL::ZZ_pXModulus &modp,
-                   const NTL::Vec<NTL::vec_ZZ_pX> &pk_list, const uint8_t msg[], int mlen,
-                   const merkle::Hash &sig_root, merkle::Path &sig_path, const NTL::vec_ZZ_pX &sig_z)
+                   const NTL::vec_ZZ_pX &cPK, const uint8_t msg[], int mlen,
+                   const NTL::ZZ_pX &sig_c, merkle::Path &sig_path, const NTL::vec_ZZ_pX &sig_z)
 {
-    NTL::vec_ZZ_pX c_list, w;
-    c_list.SetLength(N_USERS);
+    NTL::vec_ZZ_pX w;
     w.SetLength(ROWS);
-
     NTL::ZZ_pX temp;
 
-    uint8_t seed_for_c[SEEDBYTES];
-    uint8_t binary_pk_rt_m[POLYBYTES * (N_USERS + 1) * ROWS + SEEDBYTES + mlen];
-    for (auto i = 0; i < N_USERS; ++i)
-    {
-        polyvec_pack(binary_pk_rt_m, pk_list[i]);
-        polyvec_pack(binary_pk_rt_m + POLYBYTES * ROWS, pk_list);
-        memcpy(binary_pk_rt_m + POLYBYTES * (N_USERS + 1) * ROWS, sig_root.bytes, SEEDBYTES);
-        memcpy(binary_pk_rt_m + POLYBYTES * (N_USERS + 1) * ROWS + SEEDBYTES, msg, mlen);
-        shake256(seed_for_c, SEEDBYTES, binary_pk_rt_m, sizeof(binary_pk_rt_m));
-        poly_challenge(c_list[i], seed_for_c);
-
-        for (auto j = 0; j < ROWS; ++j)
-        {
-            NTL::MulMod(temp, c_list[i], pk_list[i][j], modp);
-            w[j] += temp;
-        }
-    }
     for (auto i = 0; i < ROWS; ++i)
     {
-        w[i] = sig_z[i + COLS] - w[i];
+        NTL::MulMod(temp, cPK[i], sig_c, modp);
+        w[i] = sig_z[i + COLS] - temp;
         for (auto j = 0; j < COLS; ++j)
         {
             NTL::MulMod(temp, A[i][j], sig_z[j], modp);
             w[i] += temp;
         }
     }
+
     uint8_t binary_w[ROWS * POLYBYTES];
     uint8_t hash[SEEDBYTES];
     polyvec_pack(binary_w, w);
@@ -326,7 +338,19 @@ inline bool verify(const NTL::Vec<NTL::vec_ZZ_pX> &A, const NTL::ZZ_pXModulus &m
 
     if (leaf_w != sig_path.leaf())
         return false;
-    if (!sig_path.verify(sig_root))
+
+    // Get the challenge
+    uint8_t seed_for_c[SEEDBYTES];
+    uint8_t binary_pk_rt_m[POLYBYTES * ROWS + SEEDBYTES + mlen];
+    NTL::ZZ_pX temp_c;
+    polyvec_pack(binary_pk_rt_m, cPK);
+
+    memcpy(binary_pk_rt_m + POLYBYTES * ROWS, sig_path.root()->bytes, SEEDBYTES);
+    memcpy(binary_pk_rt_m + POLYBYTES * ROWS + SEEDBYTES, msg, mlen);
+    shake256(seed_for_c, SEEDBYTES, binary_pk_rt_m, sizeof(binary_pk_rt_m));
+    poly_challenge(temp_c, seed_for_c);
+
+    if (temp_c != sig_c)
         return false;
 
     return true;

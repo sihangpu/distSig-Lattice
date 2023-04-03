@@ -2,6 +2,7 @@
 #define SAMPLE_H
 
 #include <vector>
+#include <random>
 #include <NTL/ZZX.h>
 #include <NTL/ZZ_pX.h>
 #include <NTL/xdouble.h>
@@ -128,6 +129,44 @@ inline void sampleGaussian(NTL::ZZ_pX &poly, long n, NTL::xdouble stdev)
   {
     NTL::conv(tempInt, dvec[i] + 0.5); // round to nearest integer
     NTL::conv(poly[i], tempInt);
+  }
+  // std::cout << "B: " << NTL::deg(poly) << ", ";
+  poly.normalize();
+  // std::cout << NTL::deg(poly) << ", ";
+}
+
+inline void sampleUniform(NTL::ZZ_pX &poly, long n, int eta)
+{
+  if (n <= 0)
+    return;
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<int> dist(-eta, eta);
+
+  poly.SetLength(n); // allocate space for degree-(n-1) polynomial
+  for (long i = 0; i < n; i++)
+  {
+    poly[i] = dist(gen);
+  }
+  // std::cout << "B: " << NTL::deg(poly) << ", ";
+  poly.normalize();
+  // std::cout << NTL::deg(poly) << ", ";
+}
+
+inline void sampleUniform(NTL::ZZX &poly, long n, int eta)
+{
+  if (n <= 0)
+    return;
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<int> dist(-eta, eta);
+
+  poly.SetLength(n); // allocate space for degree-(n-1) polynomial
+  for (long i = 0; i < n; i++)
+  {
+    poly[i] = dist(gen);
   }
   // std::cout << "B: " << NTL::deg(poly) << ", ";
   poly.normalize();
