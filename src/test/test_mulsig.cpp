@@ -13,7 +13,7 @@ using random_bytes_engine = std::independent_bits_engine<
     std::default_random_engine, CHAR_BIT, unsigned char>;
 random_bytes_engine rbe;
 
-int TESTIMES = 10;
+int TESTIMES = 100;
 
 static int run()
 {
