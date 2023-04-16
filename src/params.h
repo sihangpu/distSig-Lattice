@@ -5,7 +5,7 @@
 
 //====== ADJUSTABLE PARAMS ======
 // Possible settings: 1, 2, 3
-#define PARAM_SET 3
+#define PARAM_SET 4
 
 //====== BE CAREFUL TO CHANGE THE FOLLOWING PARAMS  =======
 #define MOD_30 1073479681L

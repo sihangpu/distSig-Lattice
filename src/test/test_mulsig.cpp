@@ -122,10 +122,10 @@ static int run()
     printf("Finished: Run %d times successfully\n", TESTIMES);
     printf("public key size %f kilobytes\n", PKBYTES / 1024.0);
     printf("signature size: %f kilobytes\n", (bits / 8 + SEEDBYTES * pathbytesNum) / 1024.0);
-    printf("init takes %f seconds\n", init_t / TESTIMES);
-    printf("keygen takes %f seconds per user\n", keypair_t / TESTIMES);
-    printf("signing takes %f seconds per user\n", sign_t / TESTIMES);
-    printf("verifying takes %f seconds per user\n", verify_t / TESTIMES);
+    printf("init takes %f ms\n", init_t / TESTIMES);
+    printf("keygen takes %f ms per user\n", keypair_t * 1000 / TESTIMES);
+    printf("signing takes %f ms per user\n", sign_t * 1000 / TESTIMES);
+    printf("verifying takes %f ms per user\n", verify_t * 1000 / TESTIMES);
 
     return 0;
 }
