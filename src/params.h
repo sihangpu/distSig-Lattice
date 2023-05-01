@@ -1,7 +1,7 @@
-#ifndef MULSIG_PARAMS
-#define MULSIG_PARAMS
+#ifndef DSIG_PARAMS
+#define DSIG_PARAMS
 
-// #define DEBUG_MULSIG
+// #define DEBUG_DSIG
 
 //====== ADJUSTABLE PARAMS ======
 // Possible settings: 1, 2, 3

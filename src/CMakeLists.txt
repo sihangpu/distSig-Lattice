@@ -1,7 +1,7 @@
 set(FIPS202_SRCS fips202.c)
 
 # Tests
-set(TEST_SRCS test/test_mulsig.cpp)
+set(TEST_SRCS test/test_dsig.cpp)
 
 
 if(APPLE)
@@ -28,5 +28,5 @@ add_library(fips202_ref ${FIPS202_SRCS})
 
 
 # Tests
-add_executable(test_mulsig_exec ${TEST_SRCS})
-target_link_libraries(test_mulsig_exec ntl gmp fips202_ref)
+add_executable(test_dsig_exec ${TEST_SRCS})
+target_link_libraries(test_dsig_exec ntl gmp fips202_ref)

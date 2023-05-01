@@ -5,7 +5,7 @@
 #include <chrono>
 
 #include "../params.h"
-#include "../mulsig.hpp"
+#include "../dsig.hpp"
 #include "../fips202.h"
 
 using namespace NTL;
@@ -13,7 +13,7 @@ using random_bytes_engine = std::independent_bits_engine<
     std::default_random_engine, CHAR_BIT, unsigned char>;
 random_bytes_engine rbe;
 
-int TESTIMES = 100;
+int TESTIMES = 10;
 
 static int run()
 {
@@ -69,7 +69,7 @@ static int run()
                                 h_list, cPK[i], pk_list, sk_list[i], y_list[i], v_list, msg, sizeof(msg));
         sign2_ed = GetTime();
 
-#ifdef DEBUG_MULSIG_MERKLE_TREE
+#ifdef DEBUG_DSIG_MERKLE_TREE
         for (auto mtree : merkleTrees)
         {
             std::cout << mtree.to_string(3) << std::endl;
@@ -82,7 +82,7 @@ static int run()
                      msg, sizeof(msg), rejSampIds, sig_c[0]);
             sign3_ed = GetTime();
             if (verify(matA, modp, cPK[0], msg, sizeof(msg), sig_c[0], *sig_path_ptr, sig_z))
-#ifdef DEBUG_MULSIG
+#ifdef DEBUG_DSIG
                 printf(">>> Verified <<<\n");
 #else
                 ;

@@ -245,7 +245,7 @@ inline bool rejSampOnce(const NTL::vec_ZZ &sample,
 
     NTL::RR thresh = NTL::random_RR();
 
-#ifdef DEBUG_MULSIG
+#ifdef DEBUG_DSIG
     std::cout << "prob: " << prob;
     std::cout << ", thresh: " << thresh << std::endl;
 #endif
@@ -308,7 +308,7 @@ inline int encode(std::bitset<TEMP_BITS> &code, const NTL::ZZ_pX &z)
             code[idx] = 0;
         }
         idx++;
-#ifdef DEBUG_MULSIG_ENCODE
+#ifdef DEBUG_DSIG_ENCODE
         std::cout << uz0 << ", ";
 #endif
         for (auto i = 0; i < (DELTA - 1); ++i)
@@ -384,7 +384,7 @@ inline void decode(NTL::ZZ_pX &z, const std::bitset<TEMP_BITS> &code)
             idx++;
         }
         z0 = (sign == 0) ? uz0 : delt - uz0;
-#ifdef DEBUG_MULSIG_DECODE
+#ifdef DEBUG_DSIG_DECODE
         std::cout << uz0 << ", ";
 #endif
         if (code[idx] == 0 && code[idx + 1] == 0)

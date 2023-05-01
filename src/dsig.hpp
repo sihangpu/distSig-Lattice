@@ -1,5 +1,5 @@
-#ifndef MULSIG_H
-#define MULSIG_H
+#ifndef DSIG_H
+#define DSIG_H
 #include <iostream>
 #include <random>
 #include <cstdint>
@@ -12,7 +12,7 @@ inline void init(NTL::ZZ_pXModulus &modp, NTL::Vec<NTL::vec_ZZ_pX> &matA)
 {
     NTL::ZZ _mod(MODULUS_FOR_INIT);
     NTL::ZZ_p::init(_mod);
-#ifdef DEBUG_MULSIG
+#ifdef DEBUG_DSIG
     std::cout << "Modulus in usage: " << NTL::ZZ_p::modulus() << std::endl;
 #endif
     // cyclotomic polynomial: phi_{2*DEG}(X)= X^DEG+1
@@ -125,7 +125,7 @@ inline void sign_1st(NTL::vec_ZZ_pX &y, NTL::vec_ZZ_pX &v,
     polyvec_pack(binary_pk_v + L_MULT_ROWS * POLYBYTES, pk);
     shake256(h_index, SEEDBYTES, binary_pk_v, sizeof(binary_pk_v));
 
-#ifdef DEBUG_MULSIG_SIGN_1
+#ifdef DEBUG_DSIG_SIGN_1
     std::cout << "y:\n"
               << y << std::endl
               << "v:\n"
@@ -203,7 +203,7 @@ inline int sign_2nd(NTL::vec_ZZ_pX &z, NTL::ZZ_pX &c, int &rejSamp_id, merkle::T
     shake256(seed_for_c, SEEDBYTES, binary_pk_rt_m, sizeof(binary_pk_rt_m));
     poly_challenge(c, seed_for_c);
 
-#ifdef DEBUG_MULSIG_PACK
+#ifdef DEBUG_DSIG_PACK
     std::cout << pk_list[user_id] << std::endl;
     for (auto byte : binary_pk_rt_m)
         printf("%d, ", byte);
@@ -219,7 +219,7 @@ inline int sign_2nd(NTL::vec_ZZ_pX &z, NTL::ZZ_pX &c, int &rejSamp_id, merkle::T
 
     if ((rejSamp_id < 0) || (rejSamp_id >= L_COMMS))
     {
-#ifdef DEBUG_MULSIG
+#ifdef DEBUG_DSIG
         printf("RejSampling for User #%d: Failed.\n", user_id);
 #endif
         return 0xFF;
@@ -229,7 +229,7 @@ inline int sign_2nd(NTL::vec_ZZ_pX &z, NTL::ZZ_pX &c, int &rejSamp_id, merkle::T
         z[i] += y[rejSamp_id * SUM_OF_DIMS + i];
     }
 
-#ifdef DEBUG_MULSIG
+#ifdef DEBUG_DSIG
     printf("RejSampling for User #%d: Passed.\n", user_id);
 #endif
     return 0;
