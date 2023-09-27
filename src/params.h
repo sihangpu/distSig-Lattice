@@ -11,14 +11,16 @@
 #define MOD_30 1073479681L
 #define MOD_35 34359214081L
 #define MOD_44 17592186028033L
+#define MOD_45 35184372088699L
 
 #define SIGMA_Y_24 13534249L
-#define SIGMA_Y_26 86079875L
+// #define SIGMA_Y_26 86079875L
+#define SIGMA_Y_26 91899568L
 #define SIGMA_Y_31 2405744071L
 
-#define SIGMA_SK 4 // Discrete gaussian stdev for sk
+#define SIGMA_SK 1 // Discrete gaussian stdev for sk
 #define DEG 256    // Poynomial degree + 1, should be greater than TAU
-#define ROWS 8     // Rows of matrix A
+#define ROWS 5     // Rows of matrix A
 #define COLS 7     // Columns
 #define M_REJ 1.0  // Rejection Sampling constant factor -- M
 #define TAU 23     // L1 bound of the Challenge
@@ -45,12 +47,12 @@
 #define DELTA 31             // 2^DELTA \approx SIGMA_Y
 #define SIGMA_Y (SIGMA_Y_31) // Discrete gaussian stdev for y
 #elif (PARAM_SET == 4)
-#define MODULUS_BITS 44
-#define FIXED_MODULUS (MOD_44)
+#define MODULUS_BITS 45
+#define FIXED_MODULUS (MOD_45)
 #define L_COMMS 2            // # of Commitments: NEEDS TO BE <= 10
 #define N_USERS 7            // # of Users
-#define DELTA 31             // 2^DELTA \approx SIGMA_Y
-#define SIGMA_Y (SIGMA_Y_31) // Discrete gaussian stdev for y
+#define DELTA 26             // 2^DELTA \approx SIGMA_Y
+#define SIGMA_Y (SIGMA_Y_26) // Discrete gaussian stdev for y
 #endif
 
 static constexpr long MODULUS_BYTES = (MODULUS_BITS & 0x07) == 0 ? MODULUS_BITS >> 3 : (MODULUS_BITS >> 3) + 1;
